@@ -264,3 +264,6 @@ export const lessons: Lesson[] = [
 export function charsThrough(lessonIndex: number): Hanzi[] {
   return lessons.slice(0, lessonIndex + 1).flatMap((l) => l.chars);
 }
+
+/** Every taught character, looked up by the character itself. */
+export const HANZI_BY_CHAR: ReadonlyMap<string, Hanzi> = new Map(lessons.flatMap((l) => l.chars.map((h) => [h.char, h] as const)));

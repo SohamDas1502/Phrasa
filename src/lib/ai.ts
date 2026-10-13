@@ -37,9 +37,8 @@ export async function chatJSON<T>({
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new AiError("not_configured", "GROQ_API_KEY is not set");
 
-  let res: Response;
-  try {
-    res = await fetch(`${BASE_URL}/chat/completions`, {
+  const request = () =>
+    fetch(`${BASE_URL}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
@@ -53,6 +52,18 @@ export async function chatJSON<T>({
       }),
       signal: AbortSignal.timeout(20_000),
     });
+
+  let res: Response;
+  try {
+    res = await request();
+    // Free tiers have tight per-minute limits; if the wait is short, wait once and retry.
+    if (res.status === 429) {
+      const wait = Number(res.headers.get("retry-after"));
+      if (wait > 0 && wait <= 6) {
+        await new Promise((r) => setTimeout(r, wait * 1000));
+        res = await request();
+      }
+    }
   } catch (e) {
     throw new AiError("failed", `AI request failed: ${(e as Error).message}`);
   }

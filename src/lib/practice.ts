@@ -1,11 +1,12 @@
 import "server-only";
 import type { Hanzi, Sentence } from "@/data/lessons";
-import { lessons } from "@/data/lessons";
+import { HANZI_BY_CHAR } from "@/data/lessons";
 import { AiError, aiConfigured, chatJSON } from "./ai";
 import type { CurrentUser } from "./auth";
 import { db } from "./db";
 import { hanziIn, isHan, unknownHanzi } from "./hanzi";
-import { knownChars, lessonSentences } from "./learner";
+import { AI_UNLOCK_LESSONS, knownChars, lessonSentences } from "./learner";
+import { pinyinMatches } from "./pinyin";
 import { masteryOf } from "./rewards";
 import { shuffle } from "./random";
 import { takeDailyQuota } from "./usage";
@@ -15,7 +16,7 @@ const FOCUS_SIZE = 3;
 /** AI generation calls per learner per day (each call makes up to 8 sentences). */
 const GENERATIONS_PER_DAY = 12;
 
-const HANZI = new Map<string, Hanzi>(lessons.flatMap((l) => l.chars.map((h) => [h.char, h] as const)));
+const HANZI = HANZI_BY_CHAR;
 
 export type PracticeSet = {
   /** A fresh id per round, so the client resets on "Practice again". */
@@ -76,6 +77,8 @@ export function validSentence(s: Generated, known: Set<string>): Sentence | null
   const pinyin = String(s.pinyin ?? "").trim();
   const en = String(s.en ?? "").trim();
   if (!pinyin || !en || pinyin.length > 100 || en.length > 100) return null;
+  // Reject sentences where the pinyin doesn't spell the characters (a sign the AI faked grammar).
+  if (!pinyinMatches(zh, pinyin)) return null;
   return { tokens, punct: s.punct as Sentence["punct"], pinyin, en };
 }
 
@@ -83,7 +86,8 @@ async function generateSentences(known: Set<string>, focus: string[]): Promise<S
   const { sentences } = await chatJSON<{ sentences: Generated[] }>({
     name: "practice_sentences",
     schema: SENTENCE_SCHEMA,
-    temperature: 0.9,
+    temperature: 0.7,
+    maxTokens: 700,
     messages: [
       {
         role: "system",
@@ -95,10 +99,11 @@ async function generateSentences(known: Set<string>, focus: string[]): Promise<S
         role: "user",
         content: [
           `Allowed characters (use ONLY these, no others, not even very common ones): ${[...known].join(" ")}`,
-          `Write 8 different, natural, grammatical short sentences.`,
+          `Write 6 different, natural, grammatical short sentences that a native speaker would actually say.`,
+          `If a natural sentence would need a character that isn't allowed, write a different sentence instead. Never use one character in place of another.`,
           `Every sentence must use at least one of these focus characters: ${focus.join(" ")}.`,
           `Split each sentence into tokens the way a learner would arrange word tiles: multi-character words stay together (for example 中国, 学生, 朋友, 什么), everything else is one character per token. Tokens contain no punctuation.`,
-          `Give tone-marked pinyin for the whole sentence and a natural English translation.`,
+          `Give tone-marked pinyin for the whole sentence and an accurate, natural English translation (translate multi-character words by their combined meaning, e.g. 大学生 is "university student").`,
           `punct is the sentence-ending mark: 。 or ？ or ！.`,
         ].join("\n"),
       },
@@ -129,7 +134,9 @@ export async function buildPracticeSet(user: CurrentUser): Promise<PracticeSet> 
 
   // 2. Not enough? Ask the AI for more, store the good ones for everyone.
   let notice: string | undefined;
-  if (picked.length < SET_SIZE) {
+  if (picked.length < SET_SIZE && user.lessonIndex < AI_UNLOCK_LESSONS) {
+    notice = "AI-written practice unlocks after Lesson 2. Until then, here are sentences from your lessons.";
+  } else if (picked.length < SET_SIZE) {
     try {
       if (!aiConfigured()) throw new AiError("not_configured", "no key");
       if (!(await takeDailyQuota(user.id, "ai_practice", GENERATIONS_PER_DAY))) {

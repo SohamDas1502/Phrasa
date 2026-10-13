@@ -6,14 +6,13 @@ import { Avatar } from "@/components/Avatar";
 import { CoinIcon } from "@/components/Coins";
 import { HanziDeck, type DeckCard } from "@/components/HanziDeck";
 import { SiteNav } from "@/components/SiteNav";
-import { lessons, type Hanzi } from "@/data/lessons";
+import { HANZI_BY_CHAR as HANZI, lessons } from "@/data/lessons";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { masteryOf } from "@/lib/rewards";
 
 export const metadata: Metadata = { title: "Your profile · Phrasa" };
 
-const HANZI = new Map<string, Hanzi>(lessons.flatMap((l) => l.chars.map((h) => [h.char, h] as const)));
 const dateFormat = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" });
 
 export default function ProfilePage() {

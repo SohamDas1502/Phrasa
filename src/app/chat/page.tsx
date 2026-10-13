@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ChatRoom } from "@/components/ChatRoom";
 import { SiteNav } from "@/components/SiteNav";
 import { requireUser } from "@/lib/auth";
+import { AI_UNLOCK_LESSONS } from "@/lib/learner";
 
 export const metadata: Metadata = { title: "Chat · Phrasa" };
 
@@ -30,13 +31,15 @@ export default function ChatPage() {
 
 async function Chat() {
   const user = await requireUser("/chat");
-  if (user.lessonIndex === 0) {
+  if (user.lessonIndex < AI_UNLOCK_LESSONS) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <h2 className="text-2xl font-semibold">Finish Lesson 1 first</h2>
-        <p className="max-w-sm text-muted">Your buddy only chats with characters you’ve learned, so start with your first lesson.</p>
+        <h2 className="text-2xl font-semibold">Chat unlocks after Lesson {AI_UNLOCK_LESSONS}</h2>
+        <p className="max-w-sm text-muted">
+          Your buddy only uses characters you’ve learned, so it needs a few more words (like 吗 for questions) before you can chat.
+        </p>
         <Link href="/learn" className="rounded-2xl bg-accent px-6 py-3 font-semibold text-on-accent">
-          Go to Lesson 1
+          Continue learning
         </Link>
       </div>
     );

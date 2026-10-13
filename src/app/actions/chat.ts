@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { AiError, chatJSON, type ChatMessage } from "@/lib/ai";
 import { db } from "@/lib/db";
 import { isHan, unknownHanzi } from "@/lib/hanzi";
-import { knownChars } from "@/lib/learner";
+import { AI_UNLOCK_LESSONS, knownChars } from "@/lib/learner";
+import { pinyinFromLessons, pinyinMatches } from "@/lib/pinyin";
 import { getSessionUserId } from "@/lib/session";
 import { takeDailyQuota } from "@/lib/usage";
 
@@ -63,6 +64,7 @@ function systemPrompt(known: Set<string>) {
     `The learner can ONLY read these characters: ${[...known].join(" ")}`,
     "Rules:",
     "- reply_zh must use only those characters plus punctuation (，。？！). Never use any other character, even a common one.",
+    "- Never use one character to stand for a different word. If a natural reply needs a word you can't write, say something simpler instead.",
     "- Keep reply_zh to one or two short sentences, and usually end with a simple question so the chat keeps going.",
     "- reply_pinyin is tone-marked pinyin for reply_zh; reply_en is a natural English translation.",
     "- feedback is about the learner's latest message only:",
@@ -73,6 +75,17 @@ function systemPrompt(known: Set<string>) {
   ].join("\n");
 }
 
+/** What's wrong with a reply, as an instruction for the retry, or null if it's fine. */
+function replyProblems(out: ModelReply, known: Set<string>): string | null {
+  const zh = String(out.reply_zh ?? "");
+  const unknown = unknownHanzi(zh, known);
+  if (unknown.length > 0) return `Your reply_zh used characters the learner can't read: ${unknown.join(" ")}.`;
+  if (!pinyinMatches(zh, String(out.reply_pinyin ?? ""))) {
+    return "Your reply_pinyin doesn't match the characters in reply_zh. Never use a character to stand for a different word; if you need a word that isn't allowed, say something else.";
+  }
+  return null;
+}
+
 export async function sendChatMessage(history: ChatTurn[], message: string): Promise<ChatResult> {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login?next=/chat");
@@ -81,8 +94,10 @@ export async function sendChatMessage(history: ChatTurn[], message: string): Pro
   if (!text) return { ok: false, error: "Type a message first." };
 
   const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { lessonIndex: true, coins: true } });
+  if (user.lessonIndex < AI_UNLOCK_LESSONS) {
+    return { ok: false, error: "Finish Lesson 2 first so your buddy has enough words to chat with you." };
+  }
   const known = knownChars(user.lessonIndex);
-  if (known.size === 0) return { ok: false, error: "Finish Lesson 1 first so your avatar knows which words you can read." };
 
   if (!(await takeDailyQuota(userId, "ai_chat", MESSAGES_PER_DAY))) {
     return { ok: false, error: "That’s a lot of chatting for one day! Your avatar will be ready again tomorrow." };
@@ -96,21 +111,20 @@ export async function sendChatMessage(history: ChatTurn[], message: string): Pro
 
   let out: ModelReply;
   try {
-    out = await chatJSON<ModelReply>({ name: "avatar_reply", schema: REPLY_SCHEMA, messages, temperature: 0.7 });
-    // One retry if the avatar used characters the learner can't read yet.
-    const unknown = unknownHanzi(out.reply_zh ?? "", known);
-    if (unknown.length > 0) {
+    out = await chatJSON<ModelReply>({ name: "avatar_reply", schema: REPLY_SCHEMA, messages, temperature: 0.7, maxTokens: 350 });
+    // One retry if the avatar used characters the learner can't read, or faked a word
+    // (pinyin that doesn't match the characters, e.g. 是 written but "ma" said).
+    const problems = replyProblems(out, known);
+    if (problems) {
       out = await chatJSON<ModelReply>({
         name: "avatar_reply",
         schema: REPLY_SCHEMA,
         temperature: 0.4,
+        maxTokens: 350,
         messages: [
           ...messages,
           { role: "assistant", content: JSON.stringify(out) },
-          {
-            role: "user",
-            content: `Your reply_zh used characters the learner can't read: ${unknown.join(" ")}. Rewrite the whole JSON using only the allowed characters.`,
-          },
+          { role: "user", content: `${problems} Rewrite the whole JSON following the rules.` },
         ],
       });
     }
@@ -146,11 +160,15 @@ export async function sendChatMessage(history: ChatTurn[], message: string): Pro
     }
   }
 
+  // If the pinyin still doesn't spell the characters, show pinyin from our own lesson data instead.
+  const modelPinyin = String(out.reply_pinyin ?? "").slice(0, 200);
+  const pinyin = pinyinMatches(zh, modelPinyin) ? modelPinyin : pinyinFromLessons(zh);
+
   return {
     ok: true,
     reply: {
       zh,
-      pinyin: String(out.reply_pinyin ?? "").slice(0, 200),
+      pinyin,
       en: String(out.reply_en ?? "").slice(0, 200),
       unknown: unknownHanzi(zh, known),
     },
