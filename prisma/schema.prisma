@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  coins        Int      @default(0)
+  /// Index of the next lesson to play (0-based).
+  lessonIndex  Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  sessions    Session[]
+  charStats   CharStat[]
+  completions LessonCompletion[]
+}
+
+model Session {
+  /// SHA-256 of the cookie token, so a leaked database can't be used to log in.
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// How well a learner knows one character. Drives the hanzi deck.
+model CharStat {
+  userId    String
+  char      String
+  correct   Int      @default(0)
+  wrong     Int      @default(0)
+  /// Correct answers in a row; resets on a miss.
+  streak    Int      @default(0)
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, char])
+}
+
+model LessonCompletion {
+  id               String   @id @default(cuid())
+  userId           String
+  lessonId         Int
+  quizCorrect      Int
+  quizTotal        Int
+  sentencesCorrect Int
+  sentencesTotal   Int
+  coinsEarned      Int
+  completedAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+}

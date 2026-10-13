@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --ink: #0a0a0a;
+  --muted: #6b6b6b;
+  --line: #e5e5e5;
+  --accent: #0a0a0a;
+  --on-accent: #ffffff;
+  --good: #16a34a;
+  --bad: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --ink: #fafafa;
+    --muted: #a3a3a3;
+    --line: #2e2e2e;
+    --accent: #fafafa;
+    --on-accent: #0a0a0a;
+    --good: #4ade80;
+    --bad: #f87171;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.hanzi {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+/* Avatar. The entrance is driven from AvatarGreeting.tsx; these set pivots and idle motion. */
+.avatar-limb {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.avatar-body {
+  transform-box: view-box;
+  transform-origin: 100px 165px;
+}
+
+.avatar-shoulder-left {
+  transform-box: view-box;
+  transform-origin: 31px 90px;
+}
+
+.avatar-shoulder-right {
+  transform-box: view-box;
+  transform-origin: 175px 96px;
+}
+
+@keyframes avatar-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes avatar-raise {
+  from { transform: rotate(140deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes avatar-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-22deg); }
+  75% { transform: rotate(12deg); }
+}
+
+@keyframes avatar-lower {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(140deg); }
+}
+
+
+@keyframes bubble-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.4); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.08); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes bubble-swap {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.avatar-bob {
+  animation: avatar-bob 2.4s ease-in-out infinite;
+}
+
+/* Raise, wave three times, then lower the arm (2.1s wave, done at 3.05s). */
+.avatar-wave {
+  animation:
+    avatar-raise 0.45s cubic-bezier(0.3, 1.4, 0.5, 1),
+    avatar-wave 0.7s ease-in-out 0.45s 3,
+    avatar-lower 0.5s ease-in-out 2.55s forwards;
+}
+
+/* The arm is drawn raised; 140deg at the shoulder lets it hang. */
+.avatar-arm-rest {
+  transform: rotate(140deg);
+}
+
+.bubble-pop {
+  transform-origin: 50% 100%;
+  animation: bubble-pop 0.45s ease-out 0.3s both;
+}
+
+.bubble-swap {
+  animation: bubble-swap 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-bob,
+  .avatar-wave,
+  .bubble-pop,
+  .bubble-swap {
+    animation: none;
+  }
+}
+
+/* Squash and stretch from the feet when landing and taking off. */
+.avatar-squash {
+  transform-origin: 50% 88%;
+}
+
+@keyframes coin-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.1); }
+  100% { transform: none; }
+}
+
+.coin-pop {
+  animation: coin-pop 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-pop {
+    animation: none;
+  }
+}
