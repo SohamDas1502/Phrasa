@@ -1,5 +1,7 @@
 # Phrasa: Learn Chinese
 
+**Try it live: [phrasa-xi.vercel.app](https://phrasa-xi.vercel.app)**
+
 An AI-powered Chinese learning app that takes you from HSK 1 to HSK 9, one character at a time. You start with common hanzi and build them into longer and longer sentences.
 
 ## How a lesson works
