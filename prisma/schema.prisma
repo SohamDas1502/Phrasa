@@ -20,6 +20,7 @@ model User {
   sessions    Session[]
   charStats   CharStat[]
   completions LessonCompletion[]
+  usage       DailyUsage[]
 }
 
 model Session {
@@ -64,4 +65,33 @@ model LessonCompletion {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, completedAt])
+}
+
+/// AI-generated practice sentences, checked on the server and shared by all learners.
+model PracticeSentence {
+  id        String   @id @default(cuid())
+  /// The sentence without punctuation; unique so duplicates aren't stored twice.
+  zh        String   @unique
+  tokens    String[]
+  punct     String
+  pinyin    String
+  en        String
+  /// Every distinct hanzi in the sentence, for "only characters you know" lookups.
+  chars     String[]
+  createdAt DateTime @default(now())
+
+  @@index([chars], type: Gin)
+}
+
+/// Per-user daily counters for AI calls and capped rewards.
+model DailyUsage {
+  userId String
+  /// UTC date, e.g. "2026-10-13".
+  day    String
+  kind   String
+  count  Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day, kind])
 }

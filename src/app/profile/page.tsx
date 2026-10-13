@@ -131,7 +131,17 @@ async function Profile() {
 
       {/* Hanzi deck */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-bold">Hanzi deck</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-bold">Hanzi deck</h2>
+          {deck.length > 0 && (
+            <Link
+              href="/practice"
+              className="rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-on-accent transition hover:opacity-90"
+            >
+              Practice these
+            </Link>
+          )}
+        </div>
         <HanziDeck cards={deck} />
       </section>
     </div>

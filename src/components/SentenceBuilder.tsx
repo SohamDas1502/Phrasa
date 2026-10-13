@@ -28,7 +28,7 @@ export function SentenceBuilder({
 }: {
   sentences: Sentence[];
   known: Hanzi[];
-  onAnswer: (correct: boolean) => void;
+  onAnswer: (correct: boolean, sentence: Sentence) => void;
   onProgress: (fraction: number) => void;
   onDone: () => void;
 }) {
@@ -47,7 +47,7 @@ export function SentenceBuilder({
     const ok = placed.map((t) => t.text).join("") === answer;
     setResult(ok ? "right" : "wrong");
     speak(answer);
-    onAnswer(ok);
+    onAnswer(ok, sentence);
     if (ok) {
       setCorrect(correct + 1);
       onProgress((correct + 1) / sentences.length);

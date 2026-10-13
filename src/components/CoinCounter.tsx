@@ -15,15 +15,19 @@ export function CoinCounter({ coins }: { coins: number }) {
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Coins are delivered to this exact element, so a burst started on another
+    // page can't land here and double count.
     const onHit = (e: Event) => {
       setAdded((n) => n + (e as CustomEvent<number>).detail);
-      ref.current?.animate(
-        [{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }],
-        { duration: 180, easing: "ease-out" },
-      );
+      el.animate([{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }], {
+        duration: 180,
+        easing: "ease-out",
+      });
     };
-    window.addEventListener(COIN_HIT_EVENT, onHit);
-    return () => window.removeEventListener(COIN_HIT_EVENT, onHit);
+    el.addEventListener(COIN_HIT_EVENT, onHit);
+    return () => el.removeEventListener(COIN_HIT_EVENT, onHit);
   }, []);
 
   const total = coins + added;

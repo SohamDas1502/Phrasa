@@ -9,7 +9,7 @@ export type Hanzi = {
 export type Sentence = {
   /** Tiles the learner arranges, in the correct order. */
   tokens: string[];
-  punct: "。" | "？";
+  punct: "。" | "？" | "！";
   pinyin: string;
   en: string;
 };

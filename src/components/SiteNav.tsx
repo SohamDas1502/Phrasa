@@ -21,6 +21,12 @@ export async function SiteNav() {
 
   return (
     <nav className="flex items-center gap-3 text-sm font-medium">
+      <Link href="/practice" className="underline-offset-4 hover:underline">
+        Practice
+      </Link>
+      <Link href="/chat" className="underline-offset-4 hover:underline">
+        Chat
+      </Link>
       <CoinCounter key={user.coins} coins={user.coins} />
       <Link
         href="/profile"

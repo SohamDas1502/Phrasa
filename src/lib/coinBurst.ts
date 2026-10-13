@@ -8,8 +8,9 @@ const COIN_SVG = `<svg viewBox="0 0 24 24" width="${COIN_SIZE}" height="${COIN_S
   <rect x="9" y="9" width="6" height="6" rx="0.8" fill="none" stroke="var(--ink)" stroke-width="2.2"/>
 </svg>`;
 
-function hit(amount: number) {
-  window.dispatchEvent(new CustomEvent(COIN_HIT_EVENT, { detail: amount }));
+/** Add coins to one specific counter; if it's gone (the learner moved on), do nothing. */
+function hit(counter: HTMLElement | null, amount: number) {
+  if (counter?.isConnected) counter.dispatchEvent(new CustomEvent(COIN_HIT_EVENT, { detail: amount }));
 }
 
 /** The visible coin counter (hidden, kept-alive pages can hold copies too). */
@@ -28,8 +29,9 @@ const center = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height /
 export function burstCoins(origin: HTMLElement, amount: number) {
   if (amount <= 0) return;
   const target = findCounter();
-  if (!target || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    hit(amount);
+  if (!target) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    hit(target, amount);
     return;
   }
 
@@ -68,8 +70,13 @@ export function burstCoins(origin: HTMLElement, amount: number) {
 
     spray.finished
       .then(() => {
-        // 2. Fly to the counter, one after another. Re-measure in case the page moved.
-        const to = center((findCounter() ?? target).getBoundingClientRect());
+        // 2. Fly to the counter, one after another. Re-measure in case the page scrolled.
+        // If the learner has moved to another page, quietly drop the coin instead.
+        if (!target.isConnected || target.offsetParent === null) {
+          coin.remove();
+          return null;
+        }
+        const to = center(target.getBoundingClientRect());
         const dx = to.x - from.x;
         const dy = to.y - from.y;
         // Bow the path a little so the coins swoop rather than slide.
@@ -82,10 +89,9 @@ export function burstCoins(origin: HTMLElement, amount: number) {
           ],
           { duration: 620, delay: 180 + i * 55, easing: "cubic-bezier(0.55, 0, 0.75, 0.2)", fill: "forwards" },
         );
-        return fly.finished;
+        return fly.finished.then(() => hit(target, value));
       })
-      .then(() => hit(value))
-      .catch(() => hit(value))
+      .catch(() => hit(target, value))
       .finally(() => coin.remove());
   }
 }

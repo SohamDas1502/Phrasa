@@ -14,10 +14,16 @@ The home page greets you with your block avatar waving hello (你好 / Hello). S
 
 Your progress, coins and character stats are saved to your account.
 
+## AI features (Groq + Qwen)
+
+- **Practice** (`/practice`): fresh sentences written by AI using *only* characters you've learned, focused on your iffy ones. Every sentence is checked on the server (known characters only, sensible tiles) before it's used, then stored and reused for all learners, so most rounds need no AI call. Without AI, practice falls back to sentences from your finished lessons.
+- **Chat with your buddy** (`/chat`): a conversation in Chinese limited to your vocabulary, with pinyin, English on tap, audio, and gentle corrections of what you type. Replies with unlearned characters are retried automatically.
+- Runs on Groq's free tier with `qwen/qwen3.8-27b`. The key stays on the server; AI calls and coin rewards are capped per learner per day. Any OpenAI-compatible provider works via `AI_BASE_URL` / `AI_MODEL`.
+
 ## Accounts, coins and your hanzi deck
 
 - **Sign up / log in** with email and password. Passwords are hashed with scrypt; sessions live in the database behind an http-only cookie.
-- **Coins** for practice: +1 per correct flashcard answer, +2 per correct sentence, +10 for finishing a lesson the first time.
+- **Coins** for practice: +1 per correct flashcard answer, +2 per correct sentence (lessons and practice), +10 for finishing a lesson the first time, +5 for every 3 messages you write in Chinese in chat.
 - **Profile** (`/profile`): lessons done, characters seen, mastered count, coins, your lesson path, and your **hanzi deck**:
   - **Mastered**: right 3+ times in a row
   - **Iffy**: missed, and not yet back to 3 right in a row
@@ -40,7 +46,7 @@ You need PostgreSQL running locally.
 
 ```bash
 createdb phrasa
-cp .env.example .env        # then set DATABASE_URL
+cp .env.example .env        # then set DATABASE_URL (and GROQ_API_KEY for AI)
 npm install                 # also generates the Prisma client
 npm run db:migrate          # creates the tables
 npm run dev
@@ -69,8 +75,7 @@ src/
 
 ## Roadmap
 
-- Spaced repetition reviews driven by the hanzi deck
 - Full HSK 1–9 vocabulary
-- AI-generated practice sentences limited to the words you know, plus AI grading of free-form translations (via a server-side API route, never exposing keys to the browser)
+- AI marking of free-typed translations
 - A store to spend coins on outfits and accessories for your avatar
 - Handwriting practice, listening and typing exercises
